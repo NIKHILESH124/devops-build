@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_CREDENTIALS = credentials('github-credentials')   // GitHub credentials ID
-        DOCKERHUB_CREDENTIALS = credentials('h')  // DockerHub credentials ID, updated to 'h'
+        GITHUB_CREDENTIALS = credentials('github')   // GitHub credentials ID
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub')  // DockerHub credentials ID
         DEV_IMAGE = 'niikiki/my-static-site-dev'
         PROD_IMAGE = 'niikiki/my-static-site-prod'
     }
@@ -29,7 +29,7 @@ pipeline {
         stage('Login to DockerHub') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'h', usernameVariable: 'DOCKERHUB_USR', passwordVariable: 'DOCKERHUB_PSW')]) {  // Updated here to 'h'
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKERHUB_USR', passwordVariable: 'DOCKERHUB_PSW')]) {  // Updated to 'dockerhub'
                         sh "echo ${DOCKERHUB_PSW} | docker login -u ${DOCKERHUB_USR} --password-stdin"
                     }
                 }
