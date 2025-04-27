@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_CREDENTIALS = credentials('github-credentials')
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        GITHUB_CREDENTIALS = credentials('github-credentials')   // GitHub credentials
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')  // DockerHub credentials
         DEV_IMAGE = 'niikiki/my-static-site-dev'
         PROD_IMAGE = 'niikiki/my-static-site-prod'
     }
@@ -11,24 +11,30 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
+                // Use GitHub credentials to check out code from the repo
                 git branch: "${env.BRANCH_NAME}", 
                     credentialsId: "${GITHUB_CREDENTIALS}", 
                     url: 'https://github.com/NIKHILESH124/devops-build.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Login to DockerHub') {
             steps {
                 script {
-                    dockerImage = docker.build('my-app-image')
+                    // Use docker.withRegistry to login securely using DockerHub credentials
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
+                        echo "Successfully logged into DockerHub"
+                    }
                 }
             }
         }
 
-        stage('Login to DockerHub') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
+                    // Build the Docker image from the Dockerfile
+                    dockerImage = docker.build("my-app-image")
+                    echo "Docker image built successfully"
                 }
             }
         }
@@ -36,12 +42,17 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
+                    // Push to the respective DockerHub repository based on the branch
                     if (env.BRANCH_NAME == 'dev') {
-                        sh "docker tag my-app-image ${DEV_IMAGE}:latest"
-                        sh "docker push ${DEV_IMAGE}:latest"
+                        // Tag and push to the dev repository
+                        dockerImage.tag("${DEV_IMAGE}:latest")
+                        dockerImage.push("${DEV_IMAGE}:latest")
+                        echo "Pushed to dev repository: ${DEV_IMAGE}:latest"
                     } else if (env.BRANCH_NAME == 'master') {
-                        sh "docker tag my-app-image ${PROD_IMAGE}:latest"
-                        sh "docker push ${PROD_IMAGE}:latest"
+                        // Tag and push to the prod repository
+                        dockerImage.tag("${PROD_IMAGE}:latest")
+                        dockerImage.push("${PROD_IMAGE}:latest")
+                        echo "Pushed to prod repository: ${PROD_IMAGE}:latest"
                     } else {
                         echo "Branch ${env.BRANCH_NAME} not configured to push images."
                     }
@@ -52,6 +63,7 @@ pipeline {
 
     post {
         always {
+            // Logout of DockerHub after the pipeline finishes
             sh 'docker logout'
         }
     }
